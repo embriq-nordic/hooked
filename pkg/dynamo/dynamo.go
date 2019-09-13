@@ -40,6 +40,7 @@ func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, err
 		Set(expression.Name("created"), expression.IfNotExists(expression.Name("created"), expression.Value(time.Now().Unix()))).
 		Set(expression.Name("updated"), expression.Value(time.Now().Unix()))
 
+	// Split up to support partial updates and empty attributes.
 	if p.Name != "" {
 		update = update.Set(expression.Name("name"), expression.Value(p.Name))
 	}
@@ -98,7 +99,24 @@ func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, err
 
 // Get retrieves a participant from DynamoDb.
 func (d *Dynamo) Get(id string) (*participant.Participant, error) {
-	return nil, nil
+	res, err := d.dynamoDb.GetItemRequest(
+		&dynamodb.GetItemInput{
+			Key: map[string]dynamodb.AttributeValue{
+				"id": {S: &id},
+			},
+			TableName: &d.participantTable,
+		}).Send(context.Background())
+
+	if err != nil {
+		return nil, err
+	}
+
+	var p participant.Participant
+	if err := dynamodbattribute.UnmarshalMap(res.Item, &p); err != nil {
+		return nil, err
+	}
+
+	return &p, nil
 }
 
 // GetAll retrieves all participants from DynamoDb.

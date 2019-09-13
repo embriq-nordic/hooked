@@ -48,5 +48,17 @@ func main() {
 		log.Fatalf("Error marshalling result: %v", err)
 	}
 
-	fmt.Printf("%s\n", string(bytes))
+	fmt.Printf("Save:\n%s\n", string(bytes))
+
+	get, err := repo.Get(res.Id)
+	if err != nil {
+		log.Fatalf("Error getting participant: %v", err)
+	}
+
+	bytes, err = json.MarshalIndent(get, "", "    ")
+	if err != nil {
+		log.Fatalf("Error marshalling result: %v", err)
+	}
+
+	fmt.Printf("Get:\n%s\n", string(bytes))
 }
