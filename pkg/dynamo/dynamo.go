@@ -3,6 +3,7 @@ package dynamo
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/expression"
 	"github.com/google/uuid"
@@ -25,13 +26,13 @@ func New(dynamoIface dynamodbiface.ClientAPI, tableName string) *Dynamo {
 }
 
 // Save persists a participant to DynamoDb.
-func (d *Dynamo) Save(participant *participant.Participant) error {
+func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, error) {
 	// If id is specified the object should exist in the table. Otherwise we expect it to not be present.
 	condition := expression.ConditionBuilder{}
-	if participant.Id != "" {
+	if p.Id != "" {
 		condition = expression.AttributeExists(expression.Name("id"))
 	} else {
-		participant.Id = uuid.New().String()
+		p.Id = uuid.New().String()
 		condition = expression.AttributeNotExists(expression.Name("id"))
 	}
 
@@ -39,28 +40,28 @@ func (d *Dynamo) Save(participant *participant.Participant) error {
 		Set(expression.Name("created"), expression.IfNotExists(expression.Name("created"), expression.Value(time.Now().Unix()))).
 		Set(expression.Name("updated"), expression.Value(time.Now().Unix()))
 
-	if participant.Name != "" {
-		update = update.Set(expression.Name("name"), expression.Value(participant.Name))
+	if p.Name != "" {
+		update = update.Set(expression.Name("name"), expression.Value(p.Name))
 	}
 
-	if participant.Email != "" {
-		update = update.Set(expression.Name("email"), expression.Value(participant.Email))
+	if p.Email != "" {
+		update = update.Set(expression.Name("email"), expression.Value(p.Email))
 	}
 
-	if participant.Phone != "" {
-		update = update.Set(expression.Name("phone"), expression.Value(participant.Phone))
+	if p.Phone != "" {
+		update = update.Set(expression.Name("phone"), expression.Value(p.Phone))
 	}
 
-	if participant.Org != "" {
-		update = update.Set(expression.Name("org"), expression.Value(participant.Org))
+	if p.Org != "" {
+		update = update.Set(expression.Name("org"), expression.Value(p.Org))
 	}
 
-	if participant.Score != 0 {
-		update = update.Set(expression.Name("score"), expression.Value(participant.Score))
+	if p.Score != 0 {
+		update = update.Set(expression.Name("score"), expression.Value(p.Score))
 	}
 
-	if participant.Comment != "" {
-		update = update.Set(expression.Name("comment"), expression.Value(participant.Comment))
+	if p.Comment != "" {
+		update = update.Set(expression.Name("comment"), expression.Value(p.Comment))
 	}
 
 	exp, err := expression.NewBuilder().
@@ -68,23 +69,31 @@ func (d *Dynamo) Save(participant *participant.Participant) error {
 		WithCondition(condition).
 		Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = d.dynamoDb.UpdateItemRequest(
+	res, err := d.dynamoDb.UpdateItemRequest(
 		&dynamodb.UpdateItemInput{
 			ConditionExpression:       exp.Condition(),
 			ExpressionAttributeValues: exp.Values(),
 			ExpressionAttributeNames:  exp.Names(),
 			Key: map[string]dynamodb.AttributeValue{
-				"id": {S: &participant.Id},
+				"id": {S: &p.Id},
 			},
-			ReturnValues:     dynamodb.ReturnValueNone,
+			ReturnValues:     dynamodb.ReturnValueAllNew,
 			TableName:        &d.participantTable,
 			UpdateExpression: exp.Update(),
 		}).Send(context.Background())
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	var savedParticipant participant.Participant
+	if err := dynamodbattribute.UnmarshalMap(res.Attributes, &savedParticipant); err != nil {
+		return nil, err
+	}
+
+	return &savedParticipant, err
 }
 
 // Get retrieves a participant from DynamoDb.

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -27,16 +29,24 @@ func main() {
 	repo := dynamo.New(ddb, tableName)
 
 	p := &participant.Participant{
-		//Id: "8c9c7a76-3d12-4f2c-8930-220e31033017",
-		Email: "larwef@gmail.com",
-		Name:  "Lars Wefald",
-		Phone: "12345678",
-		Org:   "Rejlers Embriq",
+		Id:      "5991dd0d-da1e-4088-9889-72067ab9d467",
+		Email:   "larwef@gmail.com",
+		Name:    "Lars Wefald",
+		Phone:   "12345678",
+		Org:     "Rejlers Embriq",
 		Comment: "test",
-		Score: 0,
+		Score:   4,
 	}
 
-	if err := repo.Save(p); err != nil {
+	res, err := repo.Save(p)
+	if err != nil {
 		log.Fatalf("Error saving participant: %v", err)
 	}
+
+	bytes, err := json.MarshalIndent(res, "", "    ")
+	if err != nil {
+		log.Fatalf("Error marshalling result: %v", err)
+	}
+
+	fmt.Printf("%s\n", string(bytes))
 }

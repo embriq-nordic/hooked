@@ -4,7 +4,7 @@ import "time"
 
 // Repository defines interface for persisting and retrieving participant info.
 type Repository interface {
-	Save(participant *Participant) error
+	Save(participant *Participant) (*Participant, error)
 	Get(id string) (*Participant, error)
 	GetAll() ([]*Participant, error)
 }
@@ -18,6 +18,6 @@ type Participant struct {
 	Org     string    `json:"org,omitempty"`
 	Score   int       `json:"score"`
 	Comment string    `json:"comment,omitempty"`
-	Created time.Time `json:"created"`
-	Updated time.Time `json:"updated"`
+	Created time.Time `json:"created" dynamodbav:",unixtime"`
+	Updated time.Time `json:"updated" dynamodbav:",unixtime"`
 }
