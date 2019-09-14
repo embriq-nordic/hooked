@@ -121,5 +121,28 @@ func (d *Dynamo) Get(id string) (*participant.Participant, error) {
 
 // GetAll retrieves all participants from DynamoDb.
 func (d *Dynamo) GetAll() ([]*participant.Participant, error) {
-	return nil, nil
+	var result []*participant.Participant
+
+	scanReq := d.dynamoDb.ScanRequest(&dynamodb.ScanInput{
+		TableName: &d.participantTable,
+	})
+
+	paginator := dynamodb.NewScanPaginator(scanReq)
+
+	// Paginator next returns false when finished or an error has occured
+	for paginator.Next(context.Background()) {
+		var recs []*participant.Participant
+		page := paginator.CurrentPage()
+		if err := dynamodbattribute.UnmarshalListOfMaps(page.Items, &recs); err != nil {
+			return nil, err
+		}
+
+		result = append(result, recs...)
+	}
+
+	if err := paginator.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

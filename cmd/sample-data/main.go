@@ -29,13 +29,13 @@ func main() {
 	repo := dynamo.New(ddb, tableName)
 
 	p := &participant.Participant{
-		Id:      "5991dd0d-da1e-4088-9889-72067ab9d467",
+		//Id:      "5991dd0d-da1e-4088-9889-72067ab9d467",
 		Email:   "larwef@gmail.com",
 		Name:    "Lars Wefald",
 		Phone:   "12345678",
 		Org:     "Rejlers Embriq",
 		Comment: "test",
-		Score:   4,
+		Score:   1,
 	}
 
 	res, err := repo.Save(p)
@@ -61,4 +61,17 @@ func main() {
 	}
 
 	fmt.Printf("Get:\n%s\n", string(bytes))
+
+	participants, err := repo.GetAll()
+	if err != nil {
+		log.Fatalf("Error getting participans: %v", err)
+	}
+	for i, p := range participants {
+		bytes, err = json.MarshalIndent(p, "", "    ")
+		if err != nil {
+			log.Fatalf("Error marshalling result: %v", err)
+		}
+
+		fmt.Printf("Get all %d:\n%s\n", i, string(bytes))
+	}
 }
