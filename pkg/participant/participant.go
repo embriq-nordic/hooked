@@ -7,11 +7,12 @@ type Repository interface {
 	Save(participant *Participant) (*Participant, error)
 	Get(id string) (*Participant, error)
 	GetAll() ([]*Participant, error)
+	Delete(id string) error
 }
 
 // Participant represents a participants object.
 type Participant struct {
-	Id      string    `json:"id,omitempty"`
+	ID      string    `json:"id,omitempty"`
 	Name    string    `json:"name,omitempty"`
 	Email   string    `json:"email,omitempty"`
 	Phone   string    `json:"phone,omitempty"`

@@ -20,7 +20,7 @@ const (
 )
 
 const (
-	noToGenerate = 25
+	noToGenerate = 10
 	maxScore     = 100
 )
 
@@ -91,7 +91,6 @@ func getPhoneNo(someInt int, len int) string {
 }
 
 func main() {
-	rand.Seed(42) // "To get the same randomness each time"
 	conf, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile(profile))
 	if err != nil {
 		log.Fatalf("Message getting AWS config: %v", err)
@@ -102,7 +101,15 @@ func main() {
 
 	repo := dynamo.New(ddb, tableName)
 
-	for i := 0; i < 25; i++ {
+	populateWithTestData(repo)
+	//deleteParticipant(repo, "03560e71-3904-4cab-a9f3-aa8c5be74a87")
+	//deleteAll(repo)
+}
+
+func populateWithTestData(repo participant.Repository) {
+	rand.Seed(42) // "To get the same randomness each time"
+
+	for i := 0; i < noToGenerate; i++ {
 		r := rand.Int()
 
 		p := &participant.Participant{
@@ -121,6 +128,22 @@ func main() {
 
 		bytes, _ := json.MarshalIndent(saved, "", "    ")
 		fmt.Printf("Saved:\n%s\n", string(bytes))
+	}
+}
 
+func deleteParticipant(repo participant.Repository, id string) {
+	if err := repo.Delete(id); err != nil {
+		log.Fatalf("Error deleting entry: %v", err)
+	}
+}
+
+func deleteAll(repo participant.Repository) {
+	participants, err := repo.GetAll()
+	if err != nil {
+		log.Fatalf("Error getting participants: %v", err)
+	}
+
+	for _, p := range participants {
+		deleteParticipant(repo, p.ID)
 	}
 }

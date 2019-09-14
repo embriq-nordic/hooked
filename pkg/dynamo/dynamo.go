@@ -2,6 +2,7 @@ package dynamo
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbiface"
@@ -29,10 +30,10 @@ func New(dynamoIface dynamodbiface.ClientAPI, tableName string) *Dynamo {
 func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, error) {
 	// If id is specified the object should exist in the table. Otherwise we expect it to not be present.
 	condition := expression.ConditionBuilder{}
-	if p.Id != "" {
+	if p.ID != "" {
 		condition = expression.AttributeExists(expression.Name("id"))
 	} else {
-		p.Id = uuid.New().String()
+		p.ID = uuid.New().String()
 		condition = expression.AttributeNotExists(expression.Name("id"))
 	}
 
@@ -79,7 +80,7 @@ func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, err
 			ExpressionAttributeValues: exp.Values(),
 			ExpressionAttributeNames:  exp.Names(),
 			Key: map[string]dynamodb.AttributeValue{
-				"id": {S: &p.Id},
+				"id": {S: &p.ID},
 			},
 			ReturnValues:     dynamodb.ReturnValueAllNew,
 			TableName:        &d.participantTable,
@@ -145,4 +146,18 @@ func (d *Dynamo) GetAll() ([]*participant.Participant, error) {
 	}
 
 	return result, nil
+}
+
+// Delete removes and entry matching the provided id.
+func (d *Dynamo) Delete(id string) error {
+	_, err := d.dynamoDb.DeleteItemRequest(
+		&dynamodb.DeleteItemInput{
+			ConditionExpression: aws.String("attribute_exists(id)"),
+			Key: map[string]dynamodb.AttributeValue{
+				"id": {S: &id},
+			},
+			TableName: &d.participantTable,
+		}).Send(context.Background())
+
+	return err
 }
