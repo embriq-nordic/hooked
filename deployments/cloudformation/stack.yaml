@@ -92,17 +92,10 @@ Resources:
                     - REGIONAL
             FailOnWarnings: true
 
-    ParticipantResource:
+    ProxyResource:
         Type: AWS::ApiGateway::Resource
         Properties:
             ParentId: !GetAtt API.RootResourceId
-            PathPart: participant
-            RestApiId: !Ref API
-
-    ParticipantProxyResource:
-        Type: AWS::ApiGateway::Resource
-        Properties:
-            ParentId: !Ref ParticipantResource
             PathPart: "{proxy+}"
             RestApiId: !Ref API
 
@@ -116,7 +109,7 @@ Resources:
                 IntegrationHttpMethod: POST
                 Type: AWS_PROXY
                 Uri: !Join [ "", [!Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/", !GetAtt Lambda.Arn, "/invocations" ]]
-            ResourceId: !Ref ParticipantProxyResource
+            ResourceId: !Ref ProxyResource
             RestApiId: !Ref API
 
     ApiDeployment:
