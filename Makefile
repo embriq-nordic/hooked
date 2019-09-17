@@ -1,10 +1,10 @@
 APPNAME=hooked
-VERSION=v0.0.1
+VERSION=v0.0.12
 SOURCE=cmd
 TARGET=target
 
 PROFILE=larwef
-S3_LAMBDA_BUCKET=hooked-artifact-bucket
+S3_LAMBDA_BUCKET=hooked-bucket
 
 LAMBDA_TARGET=$(TARGET)/lambda/$(APPNAME)-$(VERSION)-lambda-deployment.zip
 

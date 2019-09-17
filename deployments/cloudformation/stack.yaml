@@ -1,10 +1,23 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
+    ApplicationName:
+        Type: String
+        Default: hooked
+
+    Version:
+        Type: String
+        Default: v0.0.1
+
     ParticipantTableName:
         Description: Name for dynamodb participant table.
         Type: String
         Default: hooked-participants
+
+    ArtifactBucket:
+        Description: Name of the bucket containing the backend application.
+        Type: String
+        Default: hooked-bucket
 
 Resources:
     # Dynamodb
@@ -12,10 +25,116 @@ Resources:
         Type: AWS::DynamoDB::Table
         Properties:
             AttributeDefinitions:
-            -   AttributeName: id
-                AttributeType: S
+                -   AttributeName: id
+                    AttributeType: S
             KeySchema:
-            -   AttributeName: id
-                KeyType: HASH
+                -   AttributeName: id
+                    KeyType: HASH
             BillingMode: PAY_PER_REQUEST
             TableName: !Ref ParticipantTableName
+
+    # Lambda
+    LambdaRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service: lambda.amazonaws.com
+                        Action: sts:AssumeRole
+            Policies:
+                -   PolicyName: logging
+                    PolicyDocument:
+                        Version: 2012-10-17
+                        Statement:
+                            -   Effect: Allow
+                                Action: [
+                                    "logs:CreateLogGroup",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents"
+                                ]
+                                Resource: [
+                                    "arn:aws:logs:*:*:*"
+                                ]
+    Lambda:
+        Type: AWS::Lambda::Function
+        Properties:
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref ParticipantTableName
+                    REGION: !Sub ${AWS::Region}
+            FunctionName: !Sub "${ApplicationName}-lambda"
+            Code:
+                S3Bucket: !Ref ArtifactBucket
+                S3Key: !Sub "${ApplicationName}-${Version}-lambda-deployment.zip"
+            Handler: main
+            MemorySize: 128
+            Role: !GetAtt LambdaRole.Arn
+            Runtime: go1.x
+            Timeout: 30
+
+    ApiLambdaPermission:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: lambda:InvokeFunction
+            FunctionName: !GetAtt Lambda.Arn
+            Principal: apigateway.amazonaws.com
+
+    # Api Gateway
+    API:
+        Type: AWS::ApiGateway::RestApi
+        Properties:
+            Name: !Sub "${ApplicationName} API"
+            EndpointConfiguration:
+                Types:
+                    - REGIONAL
+            FailOnWarnings: true
+
+    ParticipantResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            ParentId: !GetAtt API.RootResourceId
+            PathPart: participant
+            RestApiId: !Ref API
+
+    ParticipantProxyResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            ParentId: !Ref ParticipantResource
+            PathPart: "{proxy+}"
+            RestApiId: !Ref API
+
+    ParticipantApiMethod:
+        Type: AWS::ApiGateway::Method
+        DependsOn: Lambda
+        Properties:
+            AuthorizationType: NONE
+            HttpMethod: ANY
+            Integration:
+                IntegrationHttpMethod: POST
+                Type: AWS_PROXY
+                Uri: !Join [ "", [!Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/", !GetAtt Lambda.Arn, "/invocations" ]]
+            ResourceId: !Ref ParticipantProxyResource
+            RestApiId: !Ref API
+
+    ApiDeployment:
+        DependsOn:
+            - ParticipantApiMethod
+        Type: AWS::ApiGateway::Deployment
+        Properties:
+            RestApiId: !Ref API
+
+    ApiStage:
+        Type: AWS::ApiGateway::Stage
+        Properties:
+            CacheClusterEnabled: false
+            DeploymentId: !Ref ApiDeployment
+            RestApiId: !Ref API
+            MethodSettings:
+                -   ResourcePath: /
+                    HttpMethod: "*"
+                    ThrottlingBurstLimit: 5
+                    ThrottlingRateLimit: 10
+            StageName: Main
