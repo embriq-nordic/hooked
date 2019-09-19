@@ -1,17 +1,17 @@
 package main
 
 import (
-	"github.com/rejlersembriq/hooked/pkg/participant"
+	"github.com/rejlersembriq/hooked/pkg/router"
+	"github.com/rejlersembriq/hooked/pkg/server"
 	"log"
 	"net/http"
 	"time"
 )
 
 func main() {
-
 	srv := &http.Server{
 		Addr:         ":8081",
-		Handler:      &participant.Handler{},
+		Handler:      server.New(router.New(), nil),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,

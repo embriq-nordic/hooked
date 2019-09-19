@@ -1,5 +1,5 @@
 APPNAME=hooked
-VERSION=v0.0.12
+VERSION=v0.0.13
 SOURCE=cmd
 TARGET=target
 
@@ -9,6 +9,11 @@ S3_LAMBDA_BUCKET=hooked-bucket
 LAMBDA_TARGET=$(TARGET)/lambda/$(APPNAME)-$(VERSION)-lambda-deployment.zip
 
 all: build upload
+
+coverage:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -func=coverage.out
+	go tool cover -html=coverage.out
 
 # PHONY used to mitigate conflict with dir name test
 .PHONY: test

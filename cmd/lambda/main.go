@@ -3,11 +3,12 @@ package main
 import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/rejlersembriq/hooked/pkg/lambdahandler"
-	"github.com/rejlersembriq/hooked/pkg/participant"
+	"github.com/rejlersembriq/hooked/pkg/router"
+	"github.com/rejlersembriq/hooked/pkg/server"
 )
 
 func main() {
 	lambda.Start(lambdahandler.Handler{
-		Handler: &participant.Handler{},
+		Handler: server.New(router.New(), nil),
 	}.Handle)
 }

@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 )
 
 // Handler is the entry point for a lambda and wraps the APIGateway events so http.Handler funcs can be called.
@@ -23,13 +22,13 @@ func (h Handler) Handle(ctx context.Context, req events.APIGatewayProxyRequest) 
 		status:  http.StatusOK,
 	}
 
-	httpReq := &http.Request{
-		Method:        req.HTTPMethod,
-		URL:           &url.URL{Path: req.Path},
-		Header:        req.MultiValueHeaders,
-		Body:          ioutil.NopCloser(bytes.NewBufferString(req.Body)),
-		ContentLength: int64(len(req.Body)),
-		RemoteAddr:    req.RequestContext.Identity.SourceIP,
+	// If any request scoped variables that doesnt fit in the http.Request are needed, add them to the context.
+	newCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(newCtx, req.HTTPMethod, req.Path, bytes.NewBufferString(req.Body))
+	if err != nil {
+		return events.APIGatewayProxyResponse{}, err
 	}
 
 	h.Handler.ServeHTTP(&httpRes, httpReq)

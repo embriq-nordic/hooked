@@ -7,7 +7,7 @@ Parameters:
 
     Version:
         Type: String
-        Default: v0.0.1
+        Default: v0.0.13
 
     ParticipantTableName:
         Description: Name for dynamodb participant table.
