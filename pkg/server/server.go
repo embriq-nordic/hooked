@@ -1,20 +1,21 @@
 package server
 
 import (
-	"fmt"
+	"encoding/json"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"github.com/rejlersembriq/hooked/pkg/router"
+	"log"
 	"net/http"
 )
 
 // Server handles incomming http requests.
 type Server struct {
 	router          *router.Router
-	participantRepo *participant.Repository
+	participantRepo participant.Repository
 }
 
 // New returns a new Server with routes initialized.
-func New(r *router.Router, pr *participant.Repository) *Server {
+func New(r *router.Router, pr participant.Repository) *Server {
 	srvr := &Server{
 		router:          r,
 		participantRepo: pr,
@@ -37,37 +38,91 @@ func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) participantsGET() http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		fmt.Fprint(res, "You called GET on /participants")
-	})
+	return func(res http.ResponseWriter, req *http.Request) {
+		ps, err := s.participantRepo.GetAll()
+		if err != nil {
+			log.Printf("Error retrieveing resources: %v", err)
+			http.Error(res, "Error retrieving resources", http.StatusInternalServerError)
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(res).Encode(&ps); err != nil {
+			log.Printf("Error unmarshalling response: %v", err)
+			http.Error(res, "Error marshalling response", http.StatusNotFound)
+		}
+	}
 }
 
+// TODO: Add support for updates through posting on the id and make sure this handler doesnt mess with existing objects.
 func (s *Server) participantPOST() http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		fmt.Fprint(res, "You called POST on /participant")
-	})
+	return func(res http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		var p participant.Participant
+		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+			log.Printf("Error unmarshalling request: %v", err)
+			http.Error(res, "Error unmarshalling request", http.StatusInternalServerError)
+			return
+		}
+
+		saved, err := s.participantRepo.Save(&p)
+		if err != nil {
+			log.Printf("Error persisting resource: %v", err)
+			http.Error(res, "Error persisting resource", http.StatusInternalServerError)
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		if err = json.NewEncoder(res).Encode(&saved); err != nil {
+			http.Error(res, "Error marshalling response", http.StatusNotFound)
+		}
+	}
 }
 
 func (s *Server) participantGET() http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		param, exist := router.GetParam(req.Context(), "id")
-		if !exist {
-			http.Error(res, "Error getting parameter", http.StatusInternalServerError)
+	return func(res http.ResponseWriter, req *http.Request) {
+		id, exists := router.GetParam(req.Context(), "id")
+		if !exists {
+			http.Error(res, "Unable to get request parameter", http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprint(res, fmt.Sprintf("You called GET on /participant with id: %s", param))
-	})
+		p, err := s.participantRepo.Get(id)
+		if err != nil {
+			log.Printf("Error retrieveing resource: %v", err)
+			http.Error(res, "Error retrieving resource", http.StatusInternalServerError)
+			return
+		}
+
+		if p.ID == "" {
+			http.Error(res, "Resource not found", http.StatusNotFound)
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		if err = json.NewEncoder(res).Encode(&p); err != nil {
+			log.Printf("Error marshalling response: %v", err)
+			http.Error(res, "Error marshalling response", http.StatusNotFound)
+		}
+	}
 }
 
 func (s *Server) participantDELETE() http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		param, exist := router.GetParam(req.Context(), "id")
-		if !exist {
-			http.Error(res, "Error getting parameter", http.StatusInternalServerError)
+	return func(res http.ResponseWriter, req *http.Request) {
+		id, exists := router.GetParam(req.Context(), "id")
+		if !exists {
+			http.Error(res, "Unable to get request parameter", http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprint(res, fmt.Sprintf("You called DELETE on /participant with id: %s", param))
-	})
+		// TODO: Deleting a non existing entry will return an error. Catch this specific error and return a 404.
+		if err := s.participantRepo.Delete(id); err != nil {
+			log.Printf("Error deleting resource with id: %s. Error: %v", id, err)
+			http.Error(res, "Error retrieving resource", http.StatusInternalServerError)
+			return
+		}
+
+		res.Write([]byte("Deleted"))
+	}
 }
