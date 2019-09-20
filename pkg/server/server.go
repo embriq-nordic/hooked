@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"github.com/aws/aws-sdk-go-v2/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"github.com/rejlersembriq/hooked/pkg/router"
 	"log"
@@ -29,6 +31,7 @@ func New(r *router.Router, pr participant.Repository) *Server {
 func (s *Server) routes() {
 	s.router.GET("/participants", s.participantsGET())
 	s.router.POST("/participant", s.participantPOST())
+	s.router.PUT("/participant/:id", s.participantPUT())
 	s.router.GET("/participant/:id", s.participantGET())
 	s.router.DELETE("/participant/:id", s.participantDELETE())
 }
@@ -54,7 +57,6 @@ func (s *Server) participantsGET() http.HandlerFunc {
 	}
 }
 
-// TODO: Add support for updates through posting on the id and make sure this handler doesnt mess with existing objects.
 func (s *Server) participantPOST() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		defer req.Body.Close()
@@ -66,8 +68,44 @@ func (s *Server) participantPOST() http.HandlerFunc {
 			return
 		}
 
+		p.ID = ""
 		saved, err := s.participantRepo.Save(&p)
 		if err != nil {
+			log.Printf("Error persisting resource: %v", err)
+			http.Error(res, "Error persisting resource", http.StatusInternalServerError)
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		if err = json.NewEncoder(res).Encode(&saved); err != nil {
+			http.Error(res, "Error marshalling response", http.StatusNotFound)
+		}
+	}
+}
+
+func (s *Server) participantPUT() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		id, exists := router.GetParam(req.Context(), "id")
+		if !exists {
+			http.Error(res, "Unable to get request parameter", http.StatusInternalServerError)
+			return
+		}
+
+		var p participant.Participant
+		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+			log.Printf("Error unmarshalling request: %v", err)
+			http.Error(res, "Error unmarshalling request", http.StatusInternalServerError)
+			return
+		}
+
+		p.ID = id
+		saved, err := s.participantRepo.Save(&p)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+				http.Error(res, "Resource not found", http.StatusNotFound)
+				return
+			}
+
 			log.Printf("Error persisting resource: %v", err)
 			http.Error(res, "Error persisting resource", http.StatusInternalServerError)
 			return
@@ -95,6 +133,7 @@ func (s *Server) participantGET() http.HandlerFunc {
 			return
 		}
 
+		// Dynamo returns an empty object if it doesnt exist, not an error. Checking key to find out if its empty.
 		if p.ID == "" {
 			http.Error(res, "Resource not found", http.StatusNotFound)
 			return
@@ -116,8 +155,12 @@ func (s *Server) participantDELETE() http.HandlerFunc {
 			return
 		}
 
-		// TODO: Deleting a non existing entry will return an error. Catch this specific error and return a 404.
 		if err := s.participantRepo.Delete(id); err != nil {
+			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+				http.Error(res, "Resource not found", http.StatusNotFound)
+				return
+			}
+
 			log.Printf("Error deleting resource with id: %s. Error: %v", id, err)
 			http.Error(res, "Error retrieving resource", http.StatusInternalServerError)
 			return
