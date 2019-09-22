@@ -1,26 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/rejlersembriq/hooked/pkg/dynamo"
 	"github.com/rejlersembriq/hooked/pkg/participant"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	"strconv"
+	"time"
 )
 
 const (
-	profile   = "larwef"
-	region    = endpoints.EuWest1RegionID
-	tableName = "hooked-participants"
+	apiURL = "<url>"
 )
 
 const (
-	noToGenerate = 10
+	noToGenerate = 100
 	maxScore     = 100
 )
 
@@ -91,22 +89,17 @@ func getPhoneNo(someInt int, len int) string {
 }
 
 func main() {
-	conf, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile(profile))
-	if err != nil {
-		log.Fatalf("Message getting AWS config: %v", err)
+
+	client := &http.Client{
+		Timeout: 1 * time.Minute,
 	}
-	conf.Region = region
 
-	ddb := dynamodb.New(conf)
-
-	repo := dynamo.New(ddb, tableName)
-
-	populateWithTestData(repo)
-	//deleteParticipant(repo, "03560e71-3904-4cab-a9f3-aa8c5be74a87")
-	//deleteAll(repo)
+	populateWithTestData(client)
+	//deleteParticipant(client, "0d42191f-0284-4681-bbbd-e4316f5b8857")
+	//deleteAll(client)
 }
 
-func populateWithTestData(repo participant.Repository) {
+func populateWithTestData(client *http.Client) {
 	rand.Seed(42) // "To get the same randomness each time"
 
 	for i := 0; i < noToGenerate; i++ {
@@ -121,29 +114,54 @@ func populateWithTestData(repo participant.Repository) {
 			Score:   r % maxScore,
 		}
 
-		saved, err := repo.Save(p)
-		if err != nil {
-			log.Fatalf("Error saving participant: %v", err)
+		paylaod, _ := json.Marshal(p)
+
+		req, err := http.NewRequest(http.MethodPost, apiURL+"/participant", bytes.NewBuffer(paylaod))
+
+		res, err := client.Do(req)
+		if (err != nil) || (res.StatusCode < 200 || res.StatusCode > 299) {
+			log.Fatalf("Error during participant POST. Error: %v, Status: %d", err, res.StatusCode)
 		}
 
-		bytes, _ := json.MarshalIndent(saved, "", "    ")
-		fmt.Printf("Saved:\n%s\n", string(bytes))
+		b, _ := ioutil.ReadAll(res.Body)
+		fmt.Printf("Saved:\n%s\n", string(b))
+
+		res.Body.Close()
 	}
 }
 
-func deleteParticipant(repo participant.Repository, id string) {
-	if err := repo.Delete(id); err != nil {
-		log.Fatalf("Error deleting entry: %v", err)
-	}
-}
+func deleteParticipant(client *http.Client, id string) {
+	req, err := http.NewRequest(http.MethodDelete, apiURL+"/participant/"+id, nil)
 
-func deleteAll(repo participant.Repository) {
-	participants, err := repo.GetAll()
+	res, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("Error getting participants: %v", err)
+		log.Fatalf("Error during participant DELETE. Error: %v", err)
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		log.Fatalf("Error during participant DELETE. Status: %d", res.StatusCode)
+	}
+}
+
+func deleteAll(client *http.Client) {
+	req, err := http.NewRequest(http.MethodGet, apiURL+"/participants", nil)
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("Error during participants GET. Error: %v", err)
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		log.Fatalf("Error during participants GET. Status: %d", res.StatusCode)
+	}
+
+	defer res.Body.Close()
+	var participants []*participant.Participant
+	if err := json.NewDecoder(res.Body).Decode(&participants); err != nil {
+		log.Fatalf("Error getting participants response: %v", err)
 	}
 
 	for _, p := range participants {
-		deleteParticipant(repo, p.ID)
+		deleteParticipant(client, p.ID)
 	}
 }
