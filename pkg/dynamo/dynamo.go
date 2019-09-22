@@ -3,6 +3,7 @@ package dynamo
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbiface"
@@ -27,7 +28,7 @@ func New(dynamoIface dynamodbiface.ClientAPI, tableName string) *Dynamo {
 }
 
 // Save persists a participant to DynamoDb.
-func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, error) {
+func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, participant.Error) {
 	// If id is specified the object should exist in the table. Otherwise we expect it to not be present.
 	condition := expression.ConditionBuilder{}
 	if p.ID != "" {
@@ -87,6 +88,9 @@ func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, err
 			UpdateExpression: exp.Update(),
 		}).Send(context.Background())
 	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+			return nil, participant.ErrNotExist
+		}
 		return nil, err
 	}
 
@@ -99,7 +103,7 @@ func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, err
 }
 
 // Get retrieves a participant from DynamoDb.
-func (d *Dynamo) Get(id string) (*participant.Participant, error) {
+func (d *Dynamo) Get(id string) (*participant.Participant, participant.Error) {
 	res, err := d.dynamoDb.GetItemRequest(
 		&dynamodb.GetItemInput{
 			Key: map[string]dynamodb.AttributeValue{
@@ -117,11 +121,15 @@ func (d *Dynamo) Get(id string) (*participant.Participant, error) {
 		return nil, err
 	}
 
+	if p.ID == "" {
+		return nil, participant.ErrNotExist
+	}
+
 	return &p, nil
 }
 
 // GetAll retrieves all participants from DynamoDb.
-func (d *Dynamo) GetAll() ([]*participant.Participant, error) {
+func (d *Dynamo) GetAll() ([]*participant.Participant, participant.Error) {
 	var result []*participant.Participant
 
 	scanReq := d.dynamoDb.ScanRequest(&dynamodb.ScanInput{
@@ -149,7 +157,7 @@ func (d *Dynamo) GetAll() ([]*participant.Participant, error) {
 }
 
 // Delete removes and entry matching the provided id.
-func (d *Dynamo) Delete(id string) error {
+func (d *Dynamo) Delete(id string) participant.Error {
 	_, err := d.dynamoDb.DeleteItemRequest(
 		&dynamodb.DeleteItemInput{
 			ConditionExpression: aws.String("attribute_exists(id)"),
@@ -158,6 +166,10 @@ func (d *Dynamo) Delete(id string) error {
 			},
 			TableName: &d.participantTable,
 		}).Send(context.Background())
+
+	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+		return participant.ErrNotExist
+	}
 
 	return err
 }

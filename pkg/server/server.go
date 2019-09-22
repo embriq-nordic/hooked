@@ -2,8 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/aws/aws-sdk-go-v2/aws/awserr"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"errors"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"github.com/rejlersembriq/hooked/pkg/router"
 	"log"
@@ -52,7 +51,7 @@ func (s *Server) participantsGET() http.HandlerFunc {
 		res.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(res).Encode(&ps); err != nil {
 			log.Printf("Error unmarshalling response: %v", err)
-			http.Error(res, "Error marshalling response", http.StatusNotFound)
+			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
 		}
 	}
 }
@@ -78,7 +77,7 @@ func (s *Server) participantPOST() http.HandlerFunc {
 
 		res.Header().Set("Content-Type", "application/json")
 		if err = json.NewEncoder(res).Encode(&saved); err != nil {
-			http.Error(res, "Error marshalling response", http.StatusNotFound)
+			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
 		}
 	}
 }
@@ -101,7 +100,7 @@ func (s *Server) participantPUT() http.HandlerFunc {
 		p.ID = id
 		saved, err := s.participantRepo.Save(&p)
 		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+			if errors.Is(err, participant.ErrNotExist) {
 				http.Error(res, "Resource not found", http.StatusNotFound)
 				return
 			}
@@ -128,21 +127,19 @@ func (s *Server) participantGET() http.HandlerFunc {
 
 		p, err := s.participantRepo.Get(id)
 		if err != nil {
+			if errors.Is(err, participant.ErrNotExist) {
+				http.Error(res, "Resource not found", http.StatusNotFound)
+			}
+
 			log.Printf("Error retrieveing resource: %v", err)
 			http.Error(res, "Error retrieving resource", http.StatusInternalServerError)
-			return
-		}
-
-		// Dynamo returns an empty object if it doesnt exist, not an error. Checking key to find out if its empty.
-		if p.ID == "" {
-			http.Error(res, "Resource not found", http.StatusNotFound)
 			return
 		}
 
 		res.Header().Set("Content-Type", "application/json")
 		if err = json.NewEncoder(res).Encode(&p); err != nil {
 			log.Printf("Error marshalling response: %v", err)
-			http.Error(res, "Error marshalling response", http.StatusNotFound)
+			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
 		}
 	}
 }
@@ -156,7 +153,7 @@ func (s *Server) participantDELETE() http.HandlerFunc {
 		}
 
 		if err := s.participantRepo.Delete(id); err != nil {
-			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+			if errors.Is(err, participant.ErrNotExist) {
 				http.Error(res, "Resource not found", http.StatusNotFound)
 				return
 			}
@@ -166,6 +163,8 @@ func (s *Server) participantDELETE() http.HandlerFunc {
 			return
 		}
 
-		res.Write([]byte("Deleted"))
+		if _, err := res.Write([]byte("Deleted")); err != nil {
+			http.Error(res, "Internal Server Error", http.StatusInternalServerError)
+		}
 	}
 }
