@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"github.com/rejlersembriq/hooked/pkg/router"
 	"github.com/rejlersembriq/hooked/test"
@@ -69,13 +70,13 @@ func TestServer_ServeHTTP_GETparticipants_Error(t *testing.T) {
 
 func TestServer_ServeHTTP_POSTParticipant(t *testing.T) {
 	p := &participant.Participant{
-		ID:      "ignoreId",
-		Name:    "Test Testson",
-		Email:   "test@testson.com",
-		Phone:   "12345678",
-		Org:     "TestOrg",
-		Score:   2,
-		Comment: "Test comment.",
+		ID:      aws.String("ignoreId"),
+		Name:    aws.String("Test Testson"),
+		Email:   aws.String("test@testson.com"),
+		Phone:   aws.String("12345678"),
+		Org:     aws.String("TestOrg"),
+		Score:   aws.Int(2),
+		Comment: aws.String("Test comment."),
 	}
 
 	payloadBytes, _ := json.Marshal(p)
@@ -85,11 +86,12 @@ func TestServer_ServeHTTP_POSTParticipant(t *testing.T) {
 
 	mock := &test.RepoMock{
 		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
-			assert.Equal(t, "", p.ID)
+			assert.Nil(t, p.ID)
 
-			p.ID = "someId"
-			p.Created = time.Now()
-			p.Updated = time.Now()
+			p.ID = aws.String("someId")
+			now := time.Now()
+			p.Created = &now
+			p.Updated = &now
 			return &p, nil
 		},
 	}
@@ -105,13 +107,13 @@ func TestServer_ServeHTTP_POSTParticipant(t *testing.T) {
 
 func TestServer_ServeHTTP_POSTParticipant_Error(t *testing.T) {
 	p := &participant.Participant{
-		ID:      "ignoreId",
-		Name:    "Test Testson",
-		Email:   "test@testson.com",
-		Phone:   "12345678",
-		Org:     "TestOrg",
-		Score:   2,
-		Comment: "Test comment.",
+		ID:      aws.String("ignoreId"),
+		Name:    aws.String("Test Testson"),
+		Email:   aws.String("test@testson.com"),
+		Phone:   aws.String("12345678"),
+		Org:     aws.String("TestOrg"),
+		Score:   aws.Int(2),
+		Comment: aws.String("Test comment."),
 	}
 
 	payloadBytes, _ := json.Marshal(p)
@@ -136,13 +138,13 @@ func TestServer_ServeHTTP_POSTParticipant_Error(t *testing.T) {
 
 func TestServer_ServeHTTP_PUTParticipant(t *testing.T) {
 	p := &participant.Participant{
-		ID:      "ignoreId",
-		Name:    "Test Testson",
-		Email:   "test@testson.com",
-		Phone:   "12345678",
-		Org:     "TestOrg",
-		Score:   2,
-		Comment: "Test comment.",
+		ID:      aws.String("ignoreId"),
+		Name:    aws.String("Test Testson"),
+		Email:   aws.String("test@testson.com"),
+		Phone:   aws.String("12345678"),
+		Org:     aws.String("TestOrg"),
+		Score:   aws.Int(2),
+		Comment: aws.String("Test comment."),
 	}
 
 	payloadBytes, _ := json.Marshal(p)
@@ -153,10 +155,11 @@ func TestServer_ServeHTTP_PUTParticipant(t *testing.T) {
 	rtr := router.New()
 	mock := &test.RepoMock{
 		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
-			assert.Equal(t, "someId", p.ID)
+			assert.Equal(t, "someId", *p.ID)
 
-			p.Created = time.Now()
-			p.Updated = time.Now()
+			now := time.Now()
+			p.Created = &now
+			p.Updated = &now
 			return &p, nil
 		},
 	}
@@ -170,13 +173,13 @@ func TestServer_ServeHTTP_PUTParticipant(t *testing.T) {
 
 func TestServer_ServeHTTP_PUTParticipant_Error(t *testing.T) {
 	p := &participant.Participant{
-		ID:      "ignoreId",
-		Name:    "Test Testson",
-		Email:   "test@testson.com",
-		Phone:   "12345678",
-		Org:     "TestOrg",
-		Score:   2,
-		Comment: "Test comment.",
+		ID:      aws.String("ignoreId"),
+		Name:    aws.String("Test Testson"),
+		Email:   aws.String("test@testson.com"),
+		Phone:   aws.String("12345678"),
+		Org:     aws.String("TestOrg"),
+		Score:   aws.Int(2),
+		Comment: aws.String("Test comment."),
 	}
 
 	payloadBytes, _ := json.Marshal(p)
@@ -187,7 +190,7 @@ func TestServer_ServeHTTP_PUTParticipant_Error(t *testing.T) {
 	rtr := router.New()
 	mock := &test.RepoMock{
 		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
-			assert.Equal(t, "someId", p.ID)
+			assert.Equal(t, "someId", *p.ID)
 			return &p, errors.New("SomeError")
 		},
 	}
@@ -201,13 +204,13 @@ func TestServer_ServeHTTP_PUTParticipant_Error(t *testing.T) {
 
 func TestServer_ServeHTTP_PUTParticipant_NotFound(t *testing.T) {
 	p := &participant.Participant{
-		ID:      "ignoreId",
-		Name:    "Test Testson",
-		Email:   "test@testson.com",
-		Phone:   "12345678",
-		Org:     "TestOrg",
-		Score:   2,
-		Comment: "Test comment.",
+		ID:      aws.String("ignoreId"),
+		Name:    aws.String("Test Testson"),
+		Email:   aws.String("test@testson.com"),
+		Phone:   aws.String("12345678"),
+		Org:     aws.String("TestOrg"),
+		Score:   aws.Int(2),
+		Comment: aws.String("Test comment."),
 	}
 
 	payloadBytes, _ := json.Marshal(p)
@@ -218,7 +221,7 @@ func TestServer_ServeHTTP_PUTParticipant_NotFound(t *testing.T) {
 	rtr := router.New()
 	mock := &test.RepoMock{
 		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
-			assert.Equal(t, "someId", p.ID)
+			assert.Equal(t, "someId", *p.ID)
 			return nil, participant.ErrNotExist
 		},
 	}

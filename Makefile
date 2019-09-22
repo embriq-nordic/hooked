@@ -1,5 +1,5 @@
 APPNAME=hooked
-VERSION=v0.0.15
+VERSION=v0.0.16
 SOURCE=cmd
 TARGET=target
 

@@ -20,50 +20,53 @@ func New() *Memory {
 
 // Save persists a participant to memory.
 func (m *Memory) Save(p participant.Participant) (*participant.Participant, participant.Error) {
-	if p.ID != "" {
+	if p.ID != nil {
 		// Entry should exist. Update.
-		pp, exists := m.participants[p.ID]
+		pp, exists := m.participants[*p.ID]
 		if !exists {
 			return nil, participant.ErrNotExist
 		}
 
-		if p.Name != "" {
+		if p.Name != nil {
 			pp.Name = p.Name
 		}
 
-		if p.Email != "" {
+		if p.Email != nil {
 			pp.Email = p.Email
 		}
 
-		if p.Phone != "" {
+		if p.Phone != nil {
 			pp.Phone = p.Phone
 		}
 
-		if p.Org != "" {
+		if p.Org != nil {
 			pp.Org = p.Org
 		}
 
-		// TODO: This makes it impossible to set a score to 0. But always accepting zero might wipe the score when updating aother field.
-		if p.Score != 0 {
+		if p.Score != nil {
 			pp.Score = p.Score
 		}
 
-		if p.Comment != "" {
+		if p.Comment != nil {
 			pp.Comment = p.Comment
 		}
 
-		pp.Updated = time.Now()
+		now := time.Now()
+		pp.Updated = &now
 
 		return pp, nil
 
 	}
 
 	// Entry doesn't exist. Insert.
-	p.ID = uuid.New().String()
-	p.Created = time.Now()
-	p.Updated = time.Now()
+	id := uuid.New().String()
+	p.ID = &id
 
-	m.participants[p.ID] = &p
+	now := time.Now()
+	p.Created = &now
+	p.Updated = &now
+
+	m.participants[*p.ID] = &p
 
 	return &p, nil
 }

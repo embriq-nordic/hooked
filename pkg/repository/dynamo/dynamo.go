@@ -31,10 +31,11 @@ func New(dynamoIface dynamodbiface.ClientAPI, tableName string) *Dynamo {
 func (d *Dynamo) Save(p participant.Participant) (*participant.Participant, participant.Error) {
 	// If id is specified the object should exist in the table. Otherwise we expect it to not be present.
 	condition := expression.ConditionBuilder{}
-	if p.ID != "" {
+	if p.ID != nil {
 		condition = expression.AttributeExists(expression.Name("id"))
 	} else {
-		p.ID = uuid.New().String()
+		id := uuid.New().String()
+		p.ID = &id
 		condition = expression.AttributeNotExists(expression.Name("id"))
 	}
 
@@ -43,28 +44,27 @@ func (d *Dynamo) Save(p participant.Participant) (*participant.Participant, part
 		Set(expression.Name("updated"), expression.Value(time.Now().Unix()))
 
 	// Split up to support partial updates and empty attributes.
-	if p.Name != "" {
+	if p.Name != nil {
 		update = update.Set(expression.Name("name"), expression.Value(p.Name))
 	}
 
-	if p.Email != "" {
+	if p.Email != nil {
 		update = update.Set(expression.Name("email"), expression.Value(p.Email))
 	}
 
-	if p.Phone != "" {
+	if p.Phone != nil {
 		update = update.Set(expression.Name("phone"), expression.Value(p.Phone))
 	}
 
-	if p.Org != "" {
+	if p.Org != nil {
 		update = update.Set(expression.Name("org"), expression.Value(p.Org))
 	}
 
-	// TODO: This makes it impossible to set a score to 0. But always accepting zero might wipe the score when updating aother field.
-	if p.Score != 0 {
+	if p.Score != nil {
 		update = update.Set(expression.Name("score"), expression.Value(p.Score))
 	}
 
-	if p.Comment != "" {
+	if p.Comment != nil {
 		update = update.Set(expression.Name("comment"), expression.Value(p.Comment))
 	}
 
@@ -82,7 +82,7 @@ func (d *Dynamo) Save(p participant.Participant) (*participant.Participant, part
 			ExpressionAttributeValues: exp.Values(),
 			ExpressionAttributeNames:  exp.Names(),
 			Key: map[string]dynamodb.AttributeValue{
-				"id": {S: &p.ID},
+				"id": {S: p.ID},
 			},
 			ReturnValues:     dynamodb.ReturnValueAllNew,
 			TableName:        &d.participantTable,
@@ -122,7 +122,7 @@ func (d *Dynamo) Get(id string) (*participant.Participant, participant.Error) {
 		return nil, err
 	}
 
-	if p.ID == "" {
+	if p.ID == nil {
 		return nil, participant.ErrNotExist
 	}
 

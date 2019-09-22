@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"io/ioutil"
 	"log"
@@ -94,9 +95,9 @@ func main() {
 		Timeout: 1 * time.Minute,
 	}
 
-	populateWithTestData(client)
+	//populateWithTestData(client)
 	//deleteParticipant(client, "0d42191f-0284-4681-bbbd-e4316f5b8857")
-	//deleteAll(client)
+	deleteAll(client)
 }
 
 func populateWithTestData(client *http.Client) {
@@ -106,12 +107,12 @@ func populateWithTestData(client *http.Client) {
 		r := rand.Int()
 
 		p := &participant.Participant{
-			Email:   fmt.Sprintf("Participant%d@%s.com", i, comapany(r%noOfCompanies).String()),
-			Name:    fmt.Sprintf("Participant%d", i),
-			Phone:   getPhoneNo(r, 8),
-			Org:     comapany(r % noOfCompanies).String(),
-			Comment: comment(r % noOfComments).String(),
-			Score:   r % maxScore,
+			Email:   aws.String(fmt.Sprintf("Participant%d@%s.com", i, comapany(r%noOfCompanies).String())),
+			Name:    aws.String(fmt.Sprintf("Participant%d", i)),
+			Phone:   aws.String(getPhoneNo(r, 8)),
+			Org:     aws.String(comapany(r % noOfCompanies).String()),
+			Comment: aws.String(comment(r % noOfComments).String()),
+			Score:   aws.Int(r % maxScore),
 		}
 
 		paylaod, _ := json.Marshal(p)
@@ -162,6 +163,6 @@ func deleteAll(client *http.Client) {
 	}
 
 	for _, p := range participants {
-		deleteParticipant(client, p.ID)
+		deleteParticipant(client, *p.ID)
 	}
 }

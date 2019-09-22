@@ -63,7 +63,7 @@ func (s *Server) participantPOST() http.HandlerFunc {
 			return
 		}
 
-		p.ID = ""
+		p.ID = nil
 		saved, err := s.participantRepo.Save(p)
 		if err != nil {
 			log.Printf("Error persisting resource: %v", err)
@@ -90,7 +90,7 @@ func (s *Server) participantPUT() http.HandlerFunc {
 			return
 		}
 
-		p.ID = id
+		p.ID = &id
 		saved, err := s.participantRepo.Save(p)
 		if err != nil {
 			if errors.Is(err, participant.ErrNotExist) {
