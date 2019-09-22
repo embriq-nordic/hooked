@@ -28,7 +28,7 @@ func New(dynamoIface dynamodbiface.ClientAPI, tableName string) *Dynamo {
 }
 
 // Save persists a participant to DynamoDb.
-func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, participant.Error) {
+func (d *Dynamo) Save(p participant.Participant) (*participant.Participant, participant.Error) {
 	// If id is specified the object should exist in the table. Otherwise we expect it to not be present.
 	condition := expression.ConditionBuilder{}
 	if p.ID != "" {
@@ -59,6 +59,7 @@ func (d *Dynamo) Save(p *participant.Participant) (*participant.Participant, par
 		update = update.Set(expression.Name("org"), expression.Value(p.Org))
 	}
 
+	// TODO: This makes it impossible to set a score to 0. But always accepting zero might wipe the score when updating aother field.
 	if p.Score != 0 {
 		update = update.Set(expression.Name("score"), expression.Value(p.Score))
 	}

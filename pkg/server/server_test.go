@@ -84,13 +84,13 @@ func TestServer_ServeHTTP_POSTParticipant(t *testing.T) {
 	res := httptest.NewRecorder()
 
 	mock := &test.RepoMock{
-		SaveHandler: func(p *participant.Participant) (*participant.Participant, participant.Error) {
+		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
 			assert.Equal(t, "", p.ID)
 
 			p.ID = "someId"
 			p.Created = time.Now()
 			p.Updated = time.Now()
-			return p, nil
+			return &p, nil
 		},
 	}
 
@@ -120,8 +120,8 @@ func TestServer_ServeHTTP_POSTParticipant_Error(t *testing.T) {
 	res := httptest.NewRecorder()
 
 	mock := &test.RepoMock{
-		SaveHandler: func(p *participant.Participant) (*participant.Participant, participant.Error) {
-			return p, errors.New("SomeError")
+		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
+			return &p, errors.New("SomeError")
 		},
 	}
 
@@ -152,12 +152,12 @@ func TestServer_ServeHTTP_PUTParticipant(t *testing.T) {
 
 	rtr := router.New()
 	mock := &test.RepoMock{
-		SaveHandler: func(p *participant.Participant) (*participant.Participant, participant.Error) {
+		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
 			assert.Equal(t, "someId", p.ID)
 
 			p.Created = time.Now()
 			p.Updated = time.Now()
-			return p, nil
+			return &p, nil
 		},
 	}
 	srvr := New(rtr, mock)
@@ -186,9 +186,9 @@ func TestServer_ServeHTTP_PUTParticipant_Error(t *testing.T) {
 
 	rtr := router.New()
 	mock := &test.RepoMock{
-		SaveHandler: func(p *participant.Participant) (*participant.Participant, participant.Error) {
+		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
 			assert.Equal(t, "someId", p.ID)
-			return p, errors.New("SomeError")
+			return &p, errors.New("SomeError")
 		},
 	}
 	srvr := New(rtr, mock)
@@ -217,7 +217,7 @@ func TestServer_ServeHTTP_PUTParticipant_NotFound(t *testing.T) {
 
 	rtr := router.New()
 	mock := &test.RepoMock{
-		SaveHandler: func(p *participant.Participant) (*participant.Participant, participant.Error) {
+		SaveHandler: func(p participant.Participant) (*participant.Participant, participant.Error) {
 			assert.Equal(t, "someId", p.ID)
 			return nil, participant.ErrNotExist
 		},

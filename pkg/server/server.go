@@ -68,7 +68,7 @@ func (s *Server) participantPOST() http.HandlerFunc {
 		}
 
 		p.ID = ""
-		saved, err := s.participantRepo.Save(&p)
+		saved, err := s.participantRepo.Save(p)
 		if err != nil {
 			log.Printf("Error persisting resource: %v", err)
 			http.Error(res, "Error persisting resource", http.StatusInternalServerError)
@@ -98,7 +98,7 @@ func (s *Server) participantPUT() http.HandlerFunc {
 		}
 
 		p.ID = id
-		saved, err := s.participantRepo.Save(&p)
+		saved, err := s.participantRepo.Save(p)
 		if err != nil {
 			if errors.Is(err, participant.ErrNotExist) {
 				http.Error(res, "Resource not found", http.StatusNotFound)
@@ -129,6 +129,7 @@ func (s *Server) participantGET() http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, participant.ErrNotExist) {
 				http.Error(res, "Resource not found", http.StatusNotFound)
+				return
 			}
 
 			log.Printf("Error retrieveing resource: %v", err)

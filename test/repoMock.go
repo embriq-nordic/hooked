@@ -4,14 +4,14 @@ import "github.com/rejlersembriq/hooked/pkg/participant"
 
 // RepoMock is used to mock Participant Repository. Inject the desired behaviour.
 type RepoMock struct {
-	SaveHandler   func(participant *participant.Participant) (*participant.Participant, participant.Error)
+	SaveHandler   func(participant participant.Participant) (*participant.Participant, participant.Error)
 	GetHandler    func(id string) (*participant.Participant, participant.Error)
 	GetAllHandler func() ([]*participant.Participant, participant.Error)
 	DeleteHandler func(id string) participant.Error
 }
 
 // Save mocks participant.Repository Save.
-func (r *RepoMock) Save(participant *participant.Participant) (*participant.Participant, participant.Error) {
+func (r *RepoMock) Save(participant participant.Participant) (*participant.Participant, participant.Error) {
 	return r.SaveHandler(participant)
 }
 

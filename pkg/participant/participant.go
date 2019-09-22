@@ -14,7 +14,7 @@ var ErrNotExist Error = errors.New("participant doesn't exist")
 
 // Repository defines interface for persisting and retrieving participant info.
 type Repository interface {
-	Save(participant *Participant) (*Participant, Error)
+	Save(participant Participant) (*Participant, Error)
 	Get(id string) (*Participant, Error)
 	GetAll() ([]*Participant, Error)
 	Delete(id string) Error
