@@ -56,16 +56,16 @@ func (m *Memory) Save(p participant.Participant) (*participant.Participant, part
 
 		return pp, nil
 
-	} else {
-		// Entry doesn't exist. Insert.
-		p.ID = uuid.New().String()
-		p.Created = time.Now()
-		p.Updated = time.Now()
-
-		m.participants[p.ID] = &p
-
-		return &p, nil
 	}
+
+	// Entry doesn't exist. Insert.
+	p.ID = uuid.New().String()
+	p.Created = time.Now()
+	p.Updated = time.Now()
+
+	m.participants[p.ID] = &p
+
+	return &p, nil
 }
 
 // Get retrieves a participant from memory.

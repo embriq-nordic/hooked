@@ -48,11 +48,7 @@ func (s *Server) participantsGET() http.HandlerFunc {
 			return
 		}
 
-		res.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(res).Encode(&ps); err != nil {
-			log.Printf("Error unmarshalling response: %v", err)
-			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
-		}
+		sendJSON(&ps).ServeHTTP(res, req)
 	}
 }
 
@@ -75,10 +71,7 @@ func (s *Server) participantPOST() http.HandlerFunc {
 			return
 		}
 
-		res.Header().Set("Content-Type", "application/json")
-		if err = json.NewEncoder(res).Encode(&saved); err != nil {
-			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
-		}
+		sendJSON(&saved).ServeHTTP(res, req)
 	}
 }
 
@@ -110,10 +103,7 @@ func (s *Server) participantPUT() http.HandlerFunc {
 			return
 		}
 
-		res.Header().Set("Content-Type", "application/json")
-		if err = json.NewEncoder(res).Encode(&saved); err != nil {
-			http.Error(res, "Error marshalling response", http.StatusNotFound)
-		}
+		sendJSON(&saved).ServeHTTP(res, req)
 	}
 }
 
@@ -137,11 +127,7 @@ func (s *Server) participantGET() http.HandlerFunc {
 			return
 		}
 
-		res.Header().Set("Content-Type", "application/json")
-		if err = json.NewEncoder(res).Encode(&p); err != nil {
-			log.Printf("Error marshalling response: %v", err)
-			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
-		}
+		sendJSON(&p).ServeHTTP(res, req)
 	}
 }
 
@@ -164,7 +150,24 @@ func (s *Server) participantDELETE() http.HandlerFunc {
 			return
 		}
 
-		if _, err := res.Write([]byte("Deleted")); err != nil {
+		sendString("Deleted").ServeHTTP(res, req)
+	}
+}
+
+func sendJSON(v interface{}) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(res).Encode(v); err != nil {
+			log.Printf("Error marshalling response: %v", err)
+			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
+		}
+	}
+}
+
+func sendString(s string) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if _, err := res.Write([]byte(s)); err != nil {
 			http.Error(res, "Internal Server Error", http.StatusInternalServerError)
 		}
 	}
