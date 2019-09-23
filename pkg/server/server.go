@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"github.com/rejlersembriq/hooked/pkg/router"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -43,7 +43,7 @@ func (s *Server) participantsGET() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ps, err := s.participantRepo.GetAll()
 		if err != nil {
-			log.Printf("Error retrieveing resources: %v", err)
+			zap.L().Error("Error retrieveing resources.", zap.String("error", err.Error()))
 			http.Error(res, "Error retrieving resources", http.StatusInternalServerError)
 			return
 		}
@@ -58,7 +58,7 @@ func (s *Server) participantPOST() http.HandlerFunc {
 
 		var p participant.Participant
 		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-			log.Printf("Error unmarshalling request: %v", err)
+			zap.L().Error("Error unmarshalling request.", zap.String("error", err.Error()))
 			http.Error(res, "Error unmarshalling request", http.StatusInternalServerError)
 			return
 		}
@@ -66,7 +66,7 @@ func (s *Server) participantPOST() http.HandlerFunc {
 		p.ID = nil
 		saved, err := s.participantRepo.Save(p)
 		if err != nil {
-			log.Printf("Error persisting resource: %v", err)
+			zap.L().Error("Error persisting resource.", zap.String("error", err.Error()))
 			http.Error(res, "Error persisting resource", http.StatusInternalServerError)
 			return
 		}
@@ -85,7 +85,7 @@ func (s *Server) participantPUT() http.HandlerFunc {
 
 		var p participant.Participant
 		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-			log.Printf("Error unmarshalling request: %v", err)
+			zap.L().Error("Error unmarshalling request.", zap.String("error", err.Error()))
 			http.Error(res, "Error unmarshalling request", http.StatusInternalServerError)
 			return
 		}
@@ -98,7 +98,7 @@ func (s *Server) participantPUT() http.HandlerFunc {
 				return
 			}
 
-			log.Printf("Error persisting resource: %v", err)
+			zap.L().Error("Error persisting resource.", zap.String("error", err.Error()))
 			http.Error(res, "Error persisting resource", http.StatusInternalServerError)
 			return
 		}
@@ -122,7 +122,7 @@ func (s *Server) participantGET() http.HandlerFunc {
 				return
 			}
 
-			log.Printf("Error retrieveing resource: %v", err)
+			zap.L().Error("Error persisting resource.", zap.String("error", err.Error()))
 			http.Error(res, "Error retrieving resource", http.StatusInternalServerError)
 			return
 		}
@@ -145,7 +145,7 @@ func (s *Server) participantDELETE() http.HandlerFunc {
 				return
 			}
 
-			log.Printf("Error deleting resource with id: %s. Error: %v", id, err)
+			zap.L().Error("rror deleting resource.", zap.String("id", id), zap.String("error", err.Error()))
 			http.Error(res, "Error retrieving resource", http.StatusInternalServerError)
 			return
 		}
@@ -158,7 +158,7 @@ func sendJSON(v interface{}) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(res).Encode(v); err != nil {
-			log.Printf("Error marshalling response: %v", err)
+			zap.L().Error("Error marshalling response.", zap.String("error", err.Error()))
 			http.Error(res, "Error marshalling response", http.StatusInternalServerError)
 		}
 	}
@@ -168,6 +168,7 @@ func sendString(s string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		if _, err := res.Write([]byte(s)); err != nil {
+			zap.L().Error("Error sending string response.", zap.String("error", err.Error()))
 			http.Error(res, "Internal Server Error", http.StatusInternalServerError)
 		}
 	}

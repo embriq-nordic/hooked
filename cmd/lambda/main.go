@@ -8,6 +8,9 @@ import (
 	"github.com/rejlersembriq/hooked/pkg/repository/dynamo"
 	"github.com/rejlersembriq/hooked/pkg/router"
 	"github.com/rejlersembriq/hooked/pkg/server"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"log"
 	"os"
 )
 
@@ -21,6 +24,19 @@ var rtr *router.Router
 var dyna *dynamo.Dynamo
 
 func init() {
+	config := zap.NewProductionEncoderConfig()
+	config.EncodeTime = zapcore.ISO8601TimeEncoder
+	logConfig := zap.NewProductionConfig()
+	logConfig.EncoderConfig = config
+
+	logger, err := logConfig.Build()
+	if err != nil {
+		log.Fatalf("can't initialize zap logger: %v", err)
+	}
+	defer logger.Sync()
+
+	zap.ReplaceGlobals(logger)
+
 	rtr = router.New()
 
 	table := os.Getenv(tableName)
@@ -28,7 +44,7 @@ func init() {
 
 	conf, err := external.LoadDefaultAWSConfig()
 	if err != nil {
-		panic("unable to load SDK config, " + err.Error())
+		log.Fatalf("unable to load SDK config, %s", err.Error())
 	}
 	conf.Region = region
 
