@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	apiURL = "<url>"
+	apiURL = "http://localhost:8081"
 )
 
 const (
@@ -95,9 +95,9 @@ func main() {
 		Timeout: 1 * time.Minute,
 	}
 
-	//populateWithTestData(client)
+	populateWithTestData(client)
 	//deleteParticipant(client, "0d42191f-0284-4681-bbbd-e4316f5b8857")
-	deleteAll(client)
+	//deleteAll(client)
 }
 
 func populateWithTestData(client *http.Client) {
@@ -120,8 +120,11 @@ func populateWithTestData(client *http.Client) {
 		req, err := http.NewRequest(http.MethodPost, apiURL+"/participant", bytes.NewBuffer(paylaod))
 
 		res, err := client.Do(req)
-		if (err != nil) || (res.StatusCode < 200 || res.StatusCode > 299) {
-			log.Fatalf("Error during participant POST. Error: %v, Status: %d", err, res.StatusCode)
+		if err != nil {
+			log.Fatalf("Error during participant POST. Error: %v", err)
+		}
+		if res.StatusCode < 200 || res.StatusCode > 299 {
+			log.Fatalf("Error during participant POST. Status: %d", res.StatusCode)
 		}
 
 		b, _ := ioutil.ReadAll(res.Body)

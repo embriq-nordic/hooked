@@ -1,7 +1,11 @@
 APPNAME=hooked
-VERSION=v0.0.16
+VERSION=v0.0.17
 SOURCE=cmd
 TARGET=target
+PORT=8081
+
+GOOS=linux
+GOARCH=amd64
 
 PROFILE=larwef
 S3_LAMBDA_BUCKET=hooked-bucket
@@ -24,12 +28,28 @@ test:
 	golint ./...
 	go test ./...
 
-build: test build-lambda
+# Run locally
+docker: build-server build-docker run-docker
+
+run-docker:
+	docker run -it --rm -p $(PORT):$(PORT) \
+	-e port=$(PORT) \
+	$(APPNAME)
+
+# Build
+build: test build-lambda build-server build-docker
 
 build-lambda:
 	GOOS=linux go build -o $(TARGET)/lambda/main $(SOURCE)/lambda/main.go
 	zip -j $(LAMBDA_TARGET) $(TARGET)/lambda/main
 
+build-server:
+	GOOS=$(GOOS) go build -ldflags "-X main.version=$(VERSION)" -o target/server/app cmd/server/main.go
+
+build-docker:
+	docker build -t $(APPNAME) -f build/docker/Dockerfile .
+
+# Upload
 upload: upload-lambda
 
 upload-lambda:
