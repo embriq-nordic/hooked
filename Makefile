@@ -28,6 +28,9 @@ test:
 	golint ./...
 	go test ./...
 
+integration:
+	go test ./... -tags=integration
+
 # Run locally
 docker: build-server build-docker run-docker
 
@@ -54,3 +57,12 @@ upload: upload-lambda
 
 upload-lambda:
 	aws s3 cp $(LAMBDA_TARGET) s3://$(S3_LAMBDA_BUCKET)/$(APPNAME)-$(VERSION)-lambda-deployment.zip --profile $(PROFILE)
+
+clean:
+	rm -rf $(TARGET)
+
+rebuild:
+	clean all
+
+doc:
+	godoc -http=":6060"
