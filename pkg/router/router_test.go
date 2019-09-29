@@ -229,7 +229,7 @@ var matchTests = []struct {
 	},
 }
 
-var supportedMethods = []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete}
+var supportedMethods = []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions}
 
 func TestRouter_routeMatch(t *testing.T) {
 	// Test for all combinations of http method on route and in request.

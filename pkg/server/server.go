@@ -7,6 +7,7 @@ import (
 	"github.com/rejlersembriq/hooked/pkg/router"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 )
 
 // Server handles incomming http requests.
@@ -28,11 +29,15 @@ func New(r *router.Router, pr participant.Repository) *Server {
 }
 
 func (s *Server) routes() {
-	s.router.GET("/participants", s.participantsGET())
-	s.router.POST("/participant", s.participantPOST())
-	s.router.PUT("/participant/:id", s.participantPUT())
-	s.router.GET("/participant/:id", s.participantGET())
-	s.router.DELETE("/participant/:id", s.participantDELETE())
+	s.router.GET("/participants", setCommonHeaders(s.participantsGET()))
+	s.router.POST("/participant", setCommonHeaders(s.participantPOST()))
+	s.router.PUT("/participant/:id", setCommonHeaders(s.participantPUT()))
+	s.router.GET("/participant/:id", setCommonHeaders(s.participantGET()))
+	s.router.DELETE("/participant/:id", setCommonHeaders(s.participantDELETE()))
+
+	s.router.OPTIONS("/participants", setCommonHeaders(options(http.MethodGet)))
+	s.router.OPTIONS("/participant", setCommonHeaders(options(http.MethodPost)))
+	s.router.OPTIONS("/participant/:id", setCommonHeaders(options(http.MethodPut, http.MethodGet, http.MethodDelete)))
 }
 
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
@@ -151,6 +156,20 @@ func (s *Server) participantDELETE() http.HandlerFunc {
 		}
 
 		sendString("Deleted").ServeHTTP(res, req)
+	}
+}
+
+func options(allowed ...string) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Access-Control-Allow-Methods", strings.Join(allowed, ", "))
+		res.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	}
+}
+
+func setCommonHeaders(h http.HandlerFunc) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Access-Control-Allow-Origin", "*")
+		h.ServeHTTP(res, req)
 	}
 }
 

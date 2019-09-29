@@ -40,6 +40,11 @@ func (r *Router) DELETE(path string, h http.HandlerFunc) {
 	r.addHandler(http.MethodDelete, path, h)
 }
 
+// OPTIONS adds the specified handler for OPTIONS requests matching the path.
+func (r *Router) OPTIONS(path string, h http.HandlerFunc) {
+	r.addHandler(http.MethodOptions, path, h)
+}
+
 func segment(path string) []string {
 	return strings.Split(strings.Trim(path, "/"), "/")
 }
