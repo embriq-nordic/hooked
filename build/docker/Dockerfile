@@ -1,4 +1,4 @@
-FROM alpine:3.8
+FROM alpine:3.9
 
 ENV USER=appuser
 ENV HOME=/home/$USER

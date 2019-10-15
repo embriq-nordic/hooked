@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// TODO: wrong method results in 404, should me method not allowed.
+
 // Router registers handlers and routes the http request to the right handler.
 type Router struct {
 	NotFound http.HandlerFunc

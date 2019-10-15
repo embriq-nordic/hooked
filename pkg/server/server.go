@@ -3,12 +3,15 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/rejlersembriq/hooked/pkg/participant"
 	"github.com/rejlersembriq/hooked/pkg/router"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
+
+const reqMaxBytes = 256 * 100
 
 // Server handles incomming http requests.
 type Server struct {
@@ -41,6 +44,7 @@ func (s *Server) routes() {
 }
 
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	req.Body = http.MaxBytesReader(res, req.Body, reqMaxBytes)
 	s.router.ServeHTTP(res, req)
 }
 
@@ -63,7 +67,11 @@ func (s *Server) participantPOST() http.HandlerFunc {
 
 		var p participant.Participant
 		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-			zap.L().Error("Error unmarshalling request.", zap.String("error", err.Error()))
+			if err.Error() == "http: request body too large" {
+				http.Error(res, fmt.Sprintf("Request payload too large. Max %d bytes.", reqMaxBytes), http.StatusRequestEntityTooLarge)
+				return
+			}
+
 			http.Error(res, "Error unmarshalling request", http.StatusInternalServerError)
 			return
 		}
@@ -90,7 +98,11 @@ func (s *Server) participantPUT() http.HandlerFunc {
 
 		var p participant.Participant
 		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-			zap.L().Error("Error unmarshalling request.", zap.String("error", err.Error()))
+			if err.Error() == "http: request body too large" {
+				http.Error(res, fmt.Sprintf("Request payload too large. Max %d bytes.", reqMaxBytes), http.StatusRequestEntityTooLarge)
+				return
+			}
+
 			http.Error(res, "Error unmarshalling request", http.StatusInternalServerError)
 			return
 		}
