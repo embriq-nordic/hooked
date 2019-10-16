@@ -6,19 +6,18 @@ import (
 	"strings"
 )
 
-// TODO: wrong method results in 404, should me method not allowed.
-
 // Router registers handlers and routes the http request to the right handler.
 type Router struct {
 	NotFound http.HandlerFunc
 
-	routes []route
+	routes map[string]route
 }
 
 // New returns a new Router.
 func New() *Router {
 	return &Router{
 		NotFound: http.NotFoundHandler().ServeHTTP,
+		routes:   make(map[string]route),
 	}
 }
 
@@ -52,17 +51,33 @@ func segment(path string) []string {
 }
 
 func (r *Router) addHandler(method string, path string, h http.HandlerFunc) {
-	r.routes = append(r.routes, route{
-		method:   method,
-		handler:  h,
+	rt, exist := r.routes[path]
+	if exist {
+		rt.handlers[method] = h
+		return
+	}
+
+	r.routes[path] = route{
+		handlers: map[string]http.HandlerFunc{
+			method: h,
+		},
 		segments: segment(path),
-	})
+	}
 }
 
 func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	for _, route := range r.routes {
-		if ctx, match := route.match(req.Context(), req.Method, req.URL.Path); match {
-			route.handler.ServeHTTP(res, req.WithContext(ctx))
+		if ctx, match := route.match(req.Context(), req.URL.Path); match {
+			if handler, exist := route.handlers[req.Method]; exist {
+				handler.ServeHTTP(res, req.WithContext(ctx))
+				return
+			}
+			var allow []string
+			for k := range route.handlers {
+				allow = append(allow, k)
+			}
+			res.Header().Set("Allow", strings.Join(allow, ", "))
+			http.Error(res, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
 	}
@@ -80,15 +95,14 @@ func GetParam(ctx context.Context, name string) (string, bool) {
 }
 
 type route struct {
-	method   string
-	handler  http.HandlerFunc
+	handlers map[string]http.HandlerFunc
 	segments []string
 }
 
-func (r *route) match(ctx context.Context, method string, path string) (context.Context, bool) {
+func (r *route) match(ctx context.Context, path string) (context.Context, bool) {
 	pathSegments := segment(path)
 
-	if (method != r.method) || (len(pathSegments) != len(r.segments)) {
+	if len(pathSegments) != len(r.segments) {
 		return nil, false
 	}
 
